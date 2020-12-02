@@ -1,0 +1,55 @@
+{
+    "name": "antoniokadid/wappkit-core-generators",
+    "description": "A set of tools to automate several tasks while creating an application using WAPPKit.",
+    "homepage": "https://github.com/antoniokadid/wappkit-core-generators",
+    "type": "library",
+    "license": "MIT",
+    "prefer-stable": false,
+    "minimum-stability": "stable",
+    "authors": [
+        {
+            "name": "Antonio Kadid",
+            "email": "antoniokadid@gmail.com",
+            "homepage": "http://www.antoniokadid.com",
+            "role": "Owner/Developer"
+        }
+    ],
+    "require": {
+        "php": "7.3",
+        "ext-pdo": "*",
+        "antoniokadid/wappkit-core": "dev-main",
+        "nikic/php-parser": "^4.10"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^2.16",
+        "phpcompatibility/php-compatibility": "^9.3",
+        "phpmd/phpmd": "@stable",
+        "phpunit/phpunit": "^9",
+        "squizlabs/php_codesniffer": "^3.5"
+    },
+    "config": {
+        "platform": {
+            "php": "7.3"
+        },
+        "sort-packages": true
+    },
+    "autoload": {
+        "psr-4": {
+            "AntonioKadid\\WAPPKitCore\\Generators\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "AntonioKadid\\WAPPKitCore\\Generators\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "./vendor/bin/phpunit --testdox --verbose tests",
+        "code:sniff": "php vendor/bin/phpcs --standard=phpcs.xml src",
+        "code:mess": "php vendor/bin/phpmd src text phpmd.xml",
+        "code:fix": [
+            "php vendor/bin/phpcbf --standard=phpcs.xml src",
+            "php vendor/bin/php-cs-fixer fix src --config=.php_cs"
+        ]
+    }
+}
