@@ -16,7 +16,6 @@
     ],
     "require": {
         "php": "7.3",
-        "ext-pdo": "*",
         "antoniokadid/wappkit-core": "dev-main",
         "nikic/php-parser": "^4.10"
     },
