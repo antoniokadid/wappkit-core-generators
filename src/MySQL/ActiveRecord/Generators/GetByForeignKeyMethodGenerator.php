@@ -1,6 +1,6 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 use AntonioKadid\WAPPKitCore\DAL\Exceptions\DatabaseException;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
@@ -27,7 +27,7 @@ use PhpParser\Node\Stmt\Return_;
 /**
  * Class GetByForeignKeyMethodGenerator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
 class GetByForeignKeyMethodGenerator extends ORMGenerator
 {

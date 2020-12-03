@@ -1,13 +1,14 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
-use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use LogicException;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
+use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\Array_;
 use PhpParser\Node\Expr\ArrayItem;
 use PhpParser\Node\Expr\Assign;
@@ -20,11 +21,11 @@ use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Return_;
 
 /**
- * Class DeleteMethodGenerator.
+ * Class AddMethodGenerator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class DeleteMethodGenerator extends ORMGenerator
+class AddMethodGenerator extends ORMGenerator
 {
     /**
      * @param Namespace_ $namespace
@@ -44,12 +45,8 @@ class DeleteMethodGenerator extends ORMGenerator
      */
     public function generate(BuilderFactory $factory): void
     {
-        if (count($this->table->getPrimaryKeys()) === 0) {
-            return;
-        }
-
         $method = $factory
-            ->method('delete')
+            ->method('add')
             ->makePublic()
             ->setReturnType('bool');
 
@@ -76,9 +73,9 @@ class DeleteMethodGenerator extends ORMGenerator
                     new Array_(
                         array_map(
                             function (Column $column) {
-                                return new ArrayItem(new PropertyFetch(new Variable('this'), $column->getPropertyName()));
+                                return $this->makeArrayItem($column);
                             },
-                            $this->table->getPrimaryKeys()
+                            $this->table->getColumns()
                         ),
                         [
                             'kind' => Array_::KIND_SHORT
@@ -100,15 +97,40 @@ class DeleteMethodGenerator extends ORMGenerator
     private function generateSql(): string
     {
         return sprintf(
-            "DELETE
-                FROM `%s`
-                WHERE %s",
+            'INSERT INTO `%s` (%s)
+                VALUES (%s)',
             $this->table->getName(),
             implode(
-                ' AND ',
+                ', ',
                 array_map(function (Column $column) {
-                    return sprintf('`%s` = ?', $column->getName());
-                }, $this->table->getPrimaryKeys())
+                    return sprintf('`%s`', $column->getName());
+                },
+                $this->table->getColumns())
+            ),
+            implode(', ', array_fill(0, count($this->table->getColumns()), '?'))
+        );
+    }
+
+    private function getValueExpression(Column $column): Expr
+    {
+        $name = $column->getPropertyName();
+        $type = $column->getPhpType();
+
+        if ($type === \DateTime::class) {
+            return new MethodCall(new PropertyFetch(new Variable('this'), $name), 'format', [
+                new String_('Y-m-d H:i:s')
+            ]);
+        }
+
+        return new PropertyFetch(new Variable('this'), $name);
+    }
+
+    private function makeArrayItem(Column $column): Expr
+    {
+        return new ArrayItem(
+            $this->ternarizeProperty(
+                $this->getValueExpression($column),
+                $column
             )
         );
     }

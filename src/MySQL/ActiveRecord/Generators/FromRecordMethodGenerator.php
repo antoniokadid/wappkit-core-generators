@@ -1,6 +1,6 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
@@ -25,7 +25,7 @@ use PhpParser\Node\Stmt\Return_;
 /**
  * Class FromRecordMethodGenerator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
 class FromRecordMethodGenerator extends ORMGenerator
 {

@@ -1,19 +1,19 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord;
 
 use AntonioKadid\WAPPKitCore\DAL\DatabaseConnectionInterface;
 use AntonioKadid\WAPPKitCore\Extensibility\Filter;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\AddMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\AllMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\ConstructorGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\DeleteMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\FromRecordMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\GetByForeignKeyMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\GetByPrimaryKeyMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\JsonSerializeMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\PropertiesGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators\UpdateMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\AddMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\AllMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\ConstructorGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\DeleteMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\FromRecordMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByForeignKeyMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByPrimaryKeyMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\JsonSerializeMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\PropertiesGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\UpdateMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use PhpParser\BuilderFactory;
 use PhpParser\PrettyPrinter;
@@ -21,7 +21,7 @@ use PhpParser\PrettyPrinter;
 /**
  * Class Generator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord
  */
 class Generator
 {

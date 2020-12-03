@@ -1,6 +1,6 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
@@ -22,7 +22,7 @@ use PhpParser\Node\Stmt\Return_;
 /**
  * Class JsonSerializeMethodGenerator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
 class JsonSerializeMethodGenerator extends ORMGenerator
 {

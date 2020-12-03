@@ -1,11 +1,11 @@
 <?php
 
-namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators;
+namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 /**
  * Class CommentGenerator.
  *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ORM\Generators
+ * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
 class CommentGenerator
 {
