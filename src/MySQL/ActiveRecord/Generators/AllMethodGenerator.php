@@ -8,6 +8,8 @@ use LogicException;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
+use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ArrayItem;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\FuncCall;
@@ -49,13 +51,17 @@ class AllMethodGenerator extends ORMGenerator
              ->makePublic()
              ->makeStatic()
              ->addParams([
-                 $factory->param('connection')->setType('DatabaseConnectionInterface'),
+                $factory->param('connection')->setType('DatabaseConnectionInterface'),
+                $factory->param('count')->setType('int')->setDefault(25),
+                $factory->param('skip')->setType('int')->setDefault(0)
              ])
              ->setReturnType('array');
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
             $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
+            $commentGen->addParameter('int', 'count');
+            $commentGen->addParameter('int', 'skip');
             $commentGen->setReturnType(sprintf('%s[]', $this->table->getClassName()));
 
             $method->setDocComment($commentGen->generate());
@@ -77,20 +83,25 @@ class AllMethodGenerator extends ORMGenerator
                         new Param(new Variable('record'), null, 'array')
                     ],
                     'returnType' => new Name($this->table->getClassName()),
-                    'uses'       => [
-                        new Variable('connection')
-                    ],
                     'stmts' => [
                         new Return_(
                             new StaticCall(new Name('self'), 'fromRecord', [
-                                new Variable('connection'),
                                 new Variable('record')
                             ])
                         )
                     ]
                 ]),
                 new MethodCall(new Variable('connection'), 'query', [
-                    new Variable('sql')
+                    new Variable('sql'),
+                    new Array_(
+                        [
+                            new ArrayItem(new Variable('skip')),
+                            new ArrayItem(new Variable('count')),
+                        ],
+                        [
+                            'kind' => Array_::KIND_SHORT
+                        ]
+                    )
                 ])
             ])
         );
@@ -107,7 +118,8 @@ class AllMethodGenerator extends ORMGenerator
     {
         return sprintf(
             'SELECT %s
-                FROM `%s`',
+                FROM `%s`
+                LIMIT ?, ?',
             implode(
                 ', ',
                 array_map(

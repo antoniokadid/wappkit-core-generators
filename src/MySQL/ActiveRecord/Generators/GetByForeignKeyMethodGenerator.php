@@ -3,6 +3,7 @@
 namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 use AntonioKadid\WAPPKitCore\DAL\Exceptions\DatabaseException;
+use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use AntonioKadid\WAPPKitCore\Text\TextCase;
@@ -76,7 +77,7 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
     private static function getColumnNames(array $columns): array
     {
         return array_map(function (Column $tableColumn) {
-            return $tableColumn->getPropertyName();
+            return new TextCase($tableColumn->getName());
         }, $columns);
     }
 
@@ -90,7 +91,8 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
     private static function makeMethodName(array $columns): string
     {
         $textCase = new TextCase('get by ' . implode(' and ', self::getColumnNames($columns)));
-        return $textCase->toCamelCase();
+
+        return Filter::apply('method-name', $textCase->toCamelCase());
     }
 
     /**
@@ -116,7 +118,11 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
                     [
                         $factory->param('connection')->setType('DatabaseConnectionInterface')
                     ],
-                    self::makeMethodParameters($columns)
+                    self::makeMethodParameters($columns),
+                    [
+                        $factory->param('count')->setType('int')->setDefault(25),
+                        $factory->param('skip')->setType('int')->setDefault(0)
+                    ]
                 )
             )
             ->setReturnType('array');
@@ -127,6 +133,10 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
             foreach ($columns as $column) {
                 $commentGen->addParameter($column->getPhpType(), $column->getPropertyName());
             }
+
+            $commentGen->addParameter('int', 'count');
+            $commentGen->addParameter('int', 'skip');
+
             $commentGen->setReturnType(sprintf('%s[]', $this->table->getClassName()));
 
             $method->setDocComment($commentGen->generate());
@@ -148,13 +158,9 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
                         new Param(new Variable('record'), null, 'array')
                     ],
                     'returnType' => new Name($this->table->getClassName()),
-                    'uses'       => [
-                        new Variable('connection')
-                    ],
-                    'stmts' => [
+                    'stmts'      => [
                         new Return_(
                             new StaticCall(new Name('self'), 'fromRecord', [
-                                new Variable('connection'),
                                 new Variable('record')
                             ])
                         )
@@ -163,11 +169,17 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
                 new MethodCall(new Variable('connection'), 'query', [
                     new Variable('sql'),
                     new Array_(
-                        array_map(
-                            function (Column $column) {
-                                return new ArrayItem(new Variable($column->getPropertyName()));
-                            },
-                            $columns
+                        array_merge(
+                            array_map(
+                                function (Column $column) {
+                                    return new ArrayItem(new Variable($column->getPropertyName()));
+                                },
+                                $columns
+                            ),
+                            [
+                                new ArrayItem(new Variable('skip')),
+                                new ArrayItem(new Variable('count')),
+                            ]
                         ),
                         [
                             'kind' => Array_::KIND_SHORT
@@ -192,7 +204,8 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
         return sprintf(
             'SELECT %s 
                 FROM `%s` 
-                WHERE %s',
+                WHERE %s
+                LIMIT ?, ?',
             implode(
                 ', ',
                 array_map(function (Column $column) {

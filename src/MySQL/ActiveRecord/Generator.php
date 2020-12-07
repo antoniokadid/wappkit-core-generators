@@ -64,7 +64,7 @@ class Generator
 
         $defaultTableConfiguration = [
             'namespace' => Offset::get($config, 'namespace')->getTrimString(Filter::apply('namespace-name', $this->schema)),
-            'outDir'    => Offset::get($config, 'outDir')->getTrimString(getcwd() . '/out'),
+            'outDir'    => Path::combine(getcwd(), Offset::get($config, 'outDir')->getTrimString('out')),
             'add'       => true,
             'update'    => true,
             'delete'    => true
@@ -78,7 +78,9 @@ class Generator
             );
 
             $namespace    = $tableConfig['namespace'];
-            $outDir       = $tableConfig['outDir'];
+            $outDir       = $tableConfig['outDir'] !== $defaultTableConfiguration['outDir'] ?
+                Path::combine(getcwd(), $tableConfig['outDir']) :
+                $tableConfig['outDir'];
             $allowAdd     = $tableConfig['add'] === true;
             $allowUpdate  = $tableConfig['update'] === true;
             $allowDelete  = $tableConfig['delete'] === true;
@@ -94,9 +96,6 @@ class Generator
             $namespace->addStmt($factory->use(DatabaseConnectionInterface::class));
 
             $class = $factory->class($table->getClassName());
-
-            $constructor = new ConstructorGenerator($namespace, $class, $table, $this->options);
-            $constructor->generate($factory);
 
             $properties = new PropertiesGenerator($namespace, $class, $table, $this->options);
             $properties->generate($factory);
@@ -148,7 +147,7 @@ class Generator
             'namespace-name',
             function (string $input) use ($config): string {
                 return $this->convertCase(
-                    Offset::get($config, 'names/database')
+                    Offset::get($config, 'names/namespace')
                         ->getTrimString(''),
                     $input
                 );
@@ -159,7 +158,18 @@ class Generator
             'class-name',
             function (string $input) use ($config): string {
                 return $this->convertCase(
-                    Offset::get($config, 'names/table')
+                    Offset::get($config, 'names/class')
+                        ->getTrimString(''),
+                    $input
+                );
+            }
+        );
+
+        $this->propertyFilter = Filter::add(
+            'method-name',
+            function (string $input) use ($config): string {
+                return $this->convertCase(
+                    Offset::get($config, 'names/method')
                         ->getTrimString(''),
                     $input
                 );
@@ -170,7 +180,7 @@ class Generator
             'property-name',
             function (string $input) use ($config): string {
                 return $this->convertCase(
-                    Offset::get($config, 'names/column')
+                    Offset::get($config, 'names/property')
                         ->getTrimString(''),
                     $input
                 );

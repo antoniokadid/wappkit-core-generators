@@ -48,10 +48,14 @@ class AddMethodGenerator extends ORMGenerator
         $method = $factory
             ->method('add')
             ->makePublic()
+            ->addParams([
+                $factory->param('connection')->setType('DatabaseConnectionInterface')
+            ])
             ->setReturnType('bool');
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
+            $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
             $commentGen->setReturnType('bool');
 
             $method->setDocComment($commentGen->generate());
@@ -68,7 +72,7 @@ class AddMethodGenerator extends ORMGenerator
         // Return
         $returnStmt = new Return_(
             new Greater(
-                new MethodCall(new PropertyFetch(new Variable('this'), 'connection'), 'execute', [
+                new MethodCall(new Variable('connection'), 'execute', [
                     new Variable('sql'),
                     new Array_(
                         array_map(

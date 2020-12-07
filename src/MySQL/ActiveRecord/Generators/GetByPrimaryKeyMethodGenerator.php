@@ -2,6 +2,7 @@
 
 namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
+use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use AntonioKadid\WAPPKitCore\Text\TextCase;
@@ -116,7 +117,6 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
                 new Empty_(new Variable('records')),
                 new ConstFetch(new Name('null')),
                 new StaticCall(new Name('self'), 'fromRecord', [
-                    new Variable('connection'),
                     new FuncCall(new Name('array_shift'), [
                         new Variable('records')
                     ])
@@ -160,7 +160,7 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
     private function getPrimaryKeyPropertyNames(): array
     {
         return array_map(function (Column $tableColumn) {
-            return $tableColumn->getPropertyName();
+            return new TextCase($tableColumn->getName());
         }, $this->table->getPrimaryKeys());
     }
 
@@ -170,7 +170,8 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
     private function makeMethodName(): string
     {
         $textCase = new TextCase('get by ' . implode(' and ', $this->getPrimaryKeyPropertyNames()));
-        return $textCase->toCamelCase();
+
+        return Filter::apply('method-name', $textCase->toCamelCase());
     }
 
     /**

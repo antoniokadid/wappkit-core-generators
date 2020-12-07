@@ -52,14 +52,12 @@ class FromRecordMethodGenerator extends ORMGenerator
             ->makePrivate()
             ->makeStatic()
             ->addParams([
-                $factory->param('connection')->setType('DatabaseConnectionInterface'),
                 $factory->param('record')->setType('array')
             ])
             ->setReturnType($this->table->getClassName());
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
-            $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
             $commentGen->addParameter('array', 'record');
             $commentGen->setReturnType($this->table->getClassName());
 
@@ -69,7 +67,7 @@ class FromRecordMethodGenerator extends ORMGenerator
         $expression = new Expression(
             new Assign(
                 new Variable('instance'),
-                $factory->new($this->table->getClassName(), [new Arg(new Variable('connection'))])
+                $factory->new($this->table->getClassName(), [])
             )
         );
 
