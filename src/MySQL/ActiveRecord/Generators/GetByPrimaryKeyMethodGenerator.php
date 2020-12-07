@@ -4,7 +4,7 @@ namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
-use AntonioKadid\WAPPKitCore\Text\CamelCase;
+use AntonioKadid\WAPPKitCore\Text\TextCase;
 use LogicException;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Namespace_;
@@ -169,12 +169,8 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
      */
     private function makeMethodName(): string
     {
-        $base = 'get by ' . implode(' and ', $this->getPrimaryKeyPropertyNames());
-
-        $case = new CamelCase();
-        $case->load($base);
-
-        return $case->toCamelCase();
+        $textCase = new TextCase('get by ' . implode(' and ', $this->getPrimaryKeyPropertyNames()));
+        return $textCase->toCamelCase();
     }
 
     /**

@@ -2,8 +2,8 @@
 
 namespace AntonioKadid\WAPPKitCore\Generators\MySQL;
 
-use AntonioKadid\WAPPKitCore\DAL\DatabaseConnectionInterface;
-use AntonioKadid\WAPPKitCore\DAL\Exceptions\DatabaseException;
+use AntonioKadid\WAPPKitCore\Data\DatabaseConnectionInterface;
+use AntonioKadid\WAPPKitCore\Data\Exceptions\DatabaseException;
 use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 use DateTime;
 

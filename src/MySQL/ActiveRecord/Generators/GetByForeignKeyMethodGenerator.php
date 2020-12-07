@@ -5,7 +5,7 @@ namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 use AntonioKadid\WAPPKitCore\DAL\Exceptions\DatabaseException;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
-use AntonioKadid\WAPPKitCore\Text\CamelCase;
+use AntonioKadid\WAPPKitCore\Text\TextCase;
 use LogicException;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Method;
@@ -89,12 +89,8 @@ class GetByForeignKeyMethodGenerator extends ORMGenerator
      */
     private static function makeMethodName(array $columns): string
     {
-        $base = 'get by ' . implode(' and ', self::getColumnNames($columns));
-
-        $case = new CamelCase();
-        $case->load($base);
-
-        return $case->toCamelCase();
+        $textCase = new TextCase('get by ' . implode(' and ', self::getColumnNames($columns)));
+        return $textCase->toCamelCase();
     }
 
     /**

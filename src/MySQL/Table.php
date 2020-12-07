@@ -2,8 +2,8 @@
 
 namespace AntonioKadid\WAPPKitCore\Generators\MySQL;
 
-use AntonioKadid\WAPPKitCore\DAL\DatabaseConnectionInterface;
-use AntonioKadid\WAPPKitCore\DAL\Exceptions\DatabaseException;
+use AntonioKadid\WAPPKitCore\Data\DatabaseConnectionInterface;
+use AntonioKadid\WAPPKitCore\Data\Exceptions\DatabaseException;
 use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 
 class Table
@@ -153,9 +153,10 @@ class Table
                        REFERENCED_COLUMN_NAME
                 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
                 WHERE TABLE_SCHEMA = ? AND 
+                      REFERENCED_TABLE_SCHEMA = ? AND 
                       TABLE_NAME = ?';
 
-        $records = $connection->query($sql, [$this->getSchema(), $this->getName()]);
+        $records = $connection->query($sql, [$this->getSchema(), $this->getSchema(), $this->getName()]);
 
         $result = [];
         foreach ($records as $record) {
