@@ -9,8 +9,9 @@ use PhpParser\Builder\Class_;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
 use PhpParser\Node\Expr\Array_;
-use PhpParser\Node\Expr\ArrayItem;
 use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\AssignOp\Concat;
+use PhpParser\Node\Expr\BinaryOp\Greater;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
@@ -18,7 +19,10 @@ use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
 use PhpParser\Node\Param;
+use PhpParser\Node\Scalar\LNumber;
 use PhpParser\Node\Scalar\String_;
+use PhpParser\Node\Stmt\Expression;
+use PhpParser\Node\Stmt\If_;
 use PhpParser\Node\Stmt\Return_;
 
 /**
@@ -26,7 +30,7 @@ use PhpParser\Node\Stmt\Return_;
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class AllMethodGenerator extends ORMGenerator
+class AllMethodGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace
@@ -52,7 +56,7 @@ class AllMethodGenerator extends ORMGenerator
              ->makeStatic()
              ->addParams([
                 $factory->param('connection')->setType('DatabaseConnectionInterface'),
-                $factory->param('count')->setType('int')->setDefault(25),
+                $factory->param('count')->setType('int')->setDefault(0),
                 $factory->param('skip')->setType('int')->setDefault(0)
              ])
              ->setReturnType('array');
@@ -62,7 +66,7 @@ class AllMethodGenerator extends ORMGenerator
             $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
             $commentGen->addParameter('int', 'count');
             $commentGen->addParameter('int', 'skip');
-            $commentGen->setReturnType(sprintf('%s[]', $this->table->getClassName()));
+            $commentGen->setReturnType(sprintf('%s[]', $this->table->className));
 
             $method->setDocComment($commentGen->generate());
         }
@@ -75,6 +79,31 @@ class AllMethodGenerator extends ORMGenerator
 
         $method->addStmt($sqlExpression);
 
+        // Define the SQL parameters variable
+        $parametersExpression = new Assign(new Variable('params'), new Array_([], ['kind' => Array_::KIND_SHORT]));
+
+        $method->addStmt($parametersExpression);
+
+        // check if should append limit condition
+        $countExpression = new If_(new Greater(new Variable('count'), new LNumber(0)), [
+            'stmts' => [
+                new Expression(new Concat(new Variable('sql'), new String_(' LIMIT ?'))),
+                new Expression(new FuncCall(new Name('array_push'), [new Variable('params'), new Variable('count')]))
+            ]
+        ]);
+
+        $method->addStmt($countExpression);
+
+        // check if should append offset condition
+        $countExpression = new If_(new Greater(new Variable('skip'), new LNumber(0)), [
+            'stmts' => [
+                new Expression(new Concat(new Variable('sql'), new String_(' OFFSET ?'))),
+                new Expression(new FuncCall(new Name('array_push'), [new Variable('params'), new Variable('skip')]))
+            ]
+        ]);
+
+        $method->addStmt($countExpression);
+
         // Return array map
         $returnExpression = new Return_(
             new FuncCall(new Name('array_map'), [
@@ -82,7 +111,7 @@ class AllMethodGenerator extends ORMGenerator
                     'params' => [
                         new Param(new Variable('record'), null, 'array')
                     ],
-                    'returnType' => new Name($this->table->getClassName()),
+                    'returnType' => new Name($this->table->className),
                     'stmts' => [
                         new Return_(
                             new StaticCall(new Name('self'), 'fromRecord', [
@@ -93,15 +122,7 @@ class AllMethodGenerator extends ORMGenerator
                 ]),
                 new MethodCall(new Variable('connection'), 'query', [
                     new Variable('sql'),
-                    new Array_(
-                        [
-                            new ArrayItem(new Variable('skip')),
-                            new ArrayItem(new Variable('count')),
-                        ],
-                        [
-                            'kind' => Array_::KIND_SHORT
-                        ]
-                    )
+                    new Variable('params')
                 ])
             ])
         );
@@ -118,8 +139,7 @@ class AllMethodGenerator extends ORMGenerator
     {
         return sprintf(
             'SELECT %s
-                FROM `%s`
-                LIMIT ?, ?',
+                FROM `%s`',
             implode(
                 ', ',
                 array_map(

@@ -14,7 +14,7 @@ use PhpParser\BuilderFactory;
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class PropertiesGenerator extends ORMGenerator
+class PropertiesGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace

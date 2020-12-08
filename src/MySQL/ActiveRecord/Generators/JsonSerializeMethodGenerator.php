@@ -24,7 +24,7 @@ use PhpParser\Node\Stmt\Return_;
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class JsonSerializeMethodGenerator extends ORMGenerator
+class JsonSerializeMethodGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace

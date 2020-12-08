@@ -16,8 +16,12 @@ class Table
     private $foreignKeys;
     /** @var string */
     private $name;
+    /** @var array */
+    private $nonUniqueKeys;
     /** @var string */
     private $schema;
+    /** @var array */
+    private $uniqueKeys;
 
     /**
      * @param array $tableDefinition
@@ -53,35 +57,8 @@ class Table
         );
     }
 
-    /**
-     * @param DatabaseConnectionInterface $connection
-     * @param string                      $schema
-     * @param string                      $name
-     *
-     * @throws DatabaseException
-     *
-     * @return null|Table
-     */
-    public static function get(DatabaseConnectionInterface $connection, string $schema, string $name): ?Table
-    {
-        $sql = 'SELECT * 
-                FROM `information_schema`.`tables` 
-                WHERE `table_schema` = ? AND 
-                      `table_type` = ? AND 
-                      `table_name` = ?';
-
-        $records = $connection->query($sql, [$schema, 'BASE TABLE', $name]);
-
-        return empty($records) ? null : new Table($connection, array_shift($records));
-    }
-
-    /**
-     * @return string
-     */
-    public function getClassName(): string
-    {
-        return Filter::apply('class-name', $this->name);
-    }
+    /** @var string */
+    public $className;
 
     /**
      * @return Column[]
@@ -118,16 +95,26 @@ class Table
     }
 
     /**
+     * @throws DatabaseException
+     *
+     * @return array
+     */
+    public function getNonUniqueKeys(): array
+    {
+        if (!is_array($this->nonUniqueKeys)) {
+            $this->nonUniqueKeys = $this->loadNonUniqueKeys($this->connection);
+        }
+
+        return $this->nonUniqueKeys;
+    }
+
+    /**
      * @return Column[]
      */
     public function getPrimaryKeys(): array
     {
-        return array_filter(
-            $this->getColumns(),
-            function (Column $column) {
-                return $column->isPrimary();
-            }
-        );
+        $uniqueKeys = $this->getUniqueKeys();
+        return (!empty($uniqueKeys) && isset($uniqueKeys['PRIMARY'])) ? $uniqueKeys['PRIMARY'] : [];
     }
 
     /**
@@ -139,6 +126,20 @@ class Table
     }
 
     /**
+     * @throws DatabaseException
+     *
+     * @return array
+     */
+    public function getUniqueKeys(): array
+    {
+        if (!is_array($this->uniqueKeys)) {
+            $this->uniqueKeys = $this->loadUniqueKeys($this->connection);
+        }
+
+        return $this->uniqueKeys;
+    }
+
+    /**
      * @param DatabaseConnectionInterface $connection
      *
      * @throws DatabaseException
@@ -147,56 +148,90 @@ class Table
      */
     private function loadForeignKeys(DatabaseConnectionInterface $connection): array
     {
-        $sql = 'SELECT CONSTRAINT_NAME,
-                       COLUMN_NAME,
-                       REFERENCED_TABLE_NAME,
-                       REFERENCED_COLUMN_NAME
+        $sql = 'SELECT DISTINCT CONSTRAINT_NAME,
+                                COLUMN_NAME
                 FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE 
                 WHERE TABLE_SCHEMA = ? AND 
-                      REFERENCED_TABLE_SCHEMA = ? AND 
-                      TABLE_NAME = ?';
+                      TABLE_NAME = ? AND
+                      REFERENCED_TABLE_SCHEMA IS NOT NULL AND
+                      REFERENCED_TABLE_NAME IS NOT NULL AND 
+                      REFERENCED_COLUMN_NAME IS NOT NULL';
 
-        $records = $connection->query($sql, [$this->getSchema(), $this->getSchema(), $this->getName()]);
+        $records = $connection->query($sql, [$this->getSchema(), $this->getName()]);
 
         $result = [];
         foreach ($records as $record) {
-            $referencedTableName = $record['REFERENCED_TABLE_NAME'];
-            $referencedColumnName = $record['REFERENCED_COLUMN_NAME'];
+            $constraintName = $record['CONSTRAINT_NAME'];
+            $columnName     = $record['COLUMN_NAME'];
 
-            if (!is_string($referencedTableName) || !is_string($referencedColumnName)) {
-                continue;
-            }
-
-            $foreignColumn = Column::get(
-                $connection,
-                $this->getSchema(),
-                $referencedTableName,
-                $referencedColumnName
-            );
-
-            if ($foreignColumn == null) {
-                continue;
-            }
-
-            $ownColumn = array_filter(
+            $columns = array_filter(
                 $this->getColumns(),
-                function (Column $column) use ($record) {
-                    return $column->getName() == $record['COLUMN_NAME'];
+                function (Column $column) use ($columnName) {
+                    return $column->getName() == $columnName;
                 }
             );
 
-            if ($ownColumn == null) {
+            $column = array_shift($columns);
+
+            if ($column === null) {
                 continue;
             }
 
-            $constraintName = $record['CONSTRAINT_NAME'];
             if (!isset($result[$constraintName])) {
                 $result[$constraintName] = [];
             }
 
-            array_push($result[$constraintName], ['own' => $ownColumn, 'foreign' => $foreignColumn]);
+            array_push($result[$constraintName], $column);
         }
 
         return $result;
+    }
+
+    private function loadKeys(DatabaseConnectionInterface $connection, bool $unique): array
+    {
+        $sql = 'SHOW INDEX 
+                FROM `%s`.`%s`
+                WHERE  `Non_unique` = ?';
+
+        $sql = sprintf($sql, $this->schema, $this->name);
+
+        $records = $connection->query($sql, [$unique ? 0 : 1]);
+
+        $result = [];
+        foreach ($records as $record) {
+            $indexName  = $record['Key_name'];
+            $columnName = $record['Column_name'];
+
+            if (!isset($result[$indexName])) {
+                $result[$indexName] = [];
+            }
+
+            $columns = array_filter(
+                $this->getColumns(),
+                function (Column $column) use ($columnName) {
+                    return $column->getName() == $columnName;
+                }
+            );
+
+            $column = array_shift($columns);
+
+            if ($column === null) {
+                continue;
+            }
+
+            array_push($result[$indexName], $column);
+        }
+
+        return $result;
+    }
+
+    private function loadNonUniqueKeys(DatabaseConnectionInterface $connection): array
+    {
+        return $this->loadKeys($connection, false);
+    }
+
+    private function loadUniqueKeys(DatabaseConnectionInterface $connection): array
+    {
+        return $this->loadKeys($connection, true);
     }
 }

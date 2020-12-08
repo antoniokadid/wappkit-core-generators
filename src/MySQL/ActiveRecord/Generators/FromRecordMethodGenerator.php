@@ -9,10 +9,10 @@ use PhpParser\Builder\Class_;
 use PhpParser\Builder\Method;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
-use PhpParser\Node\Arg;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
@@ -27,7 +27,7 @@ use PhpParser\Node\Stmt\Return_;
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class FromRecordMethodGenerator extends ORMGenerator
+class FromRecordMethodGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace
@@ -54,12 +54,12 @@ class FromRecordMethodGenerator extends ORMGenerator
             ->addParams([
                 $factory->param('record')->setType('array')
             ])
-            ->setReturnType($this->table->getClassName());
+            ->setReturnType($this->table->className);
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
             $commentGen->addParameter('array', 'record');
-            $commentGen->setReturnType($this->table->getClassName());
+            $commentGen->setReturnType($this->table->className);
 
             $method->setDocComment($commentGen->generate());
         }
@@ -67,7 +67,7 @@ class FromRecordMethodGenerator extends ORMGenerator
         $expression = new Expression(
             new Assign(
                 new Variable('instance'),
-                $factory->new($this->table->getClassName(), [])
+                $factory->new($this->table->className, [])
             )
         );
 
@@ -100,12 +100,12 @@ class FromRecordMethodGenerator extends ORMGenerator
     private function getDateTimeExpression(Column $column): Expr
     {
         return new StaticCall(
-            new Name(\DateTime::class),
+            new Name('\DateTime'),
             'createFromFormat',
             [
                 new String_('Y-m-d H:i:s'),
                 new ArrayDimFetch(new Variable('record'), new String_($column->getName())),
-                new New_(new Name(\DateTimeZone::class), [new String_('UTC')])
+                new New_(new Name('\DateTimeZone'), [new FuncCall(new Name('date_default_timezone_get'))])
             ]
         );
     }

@@ -2,29 +2,38 @@
 
 namespace AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators;
 
-use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
+use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\Column;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
+use AntonioKadid\WAPPKitCore\Text\TextCase;
 use LogicException;
 use PhpParser\Builder\Class_;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
 use PhpParser\Node\Expr\Array_;
+use PhpParser\Node\Expr\ArrayDimFetch;
 use PhpParser\Node\Expr\ArrayItem;
 use PhpParser\Node\Expr\Assign;
-use PhpParser\Node\Expr\BinaryOp\Greater;
+use PhpParser\Node\Expr\ConstFetch;
+use PhpParser\Node\Expr\Empty_;
+use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\PropertyFetch;
+use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
+use PhpParser\Node\Name;
+use PhpParser\Node\NullableType;
+use PhpParser\Node\Param;
 use PhpParser\Node\Scalar\LNumber;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Return_;
 
 /**
- * Class DeleteMethodGenerator.
+ * Class CountMethodGenerator.
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-class DeleteMethodGenerator extends ActiveRecordSectionGenerator
+class CountMethodGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace
@@ -49,18 +58,22 @@ class DeleteMethodGenerator extends ActiveRecordSectionGenerator
         }
 
         $method = $factory
-            ->method('delete')
+            ->method('count')
             ->makePublic()
-            ->addParams([
-                $factory->param('connection')->setType('DatabaseConnectionInterface')
-            ])
-            ->setReturnType('bool');
+            ->makeStatic()
+            ->addParams(
+                array_merge(
+                    [
+                        $factory->param('connection')->setType('DatabaseConnectionInterface')
+                    ]
+                )
+            )
+            ->setReturnType('int');
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
             $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
-            $commentGen->setReturnType('bool');
-
+            $commentGen->setReturnType('int');
             $method->setDocComment($commentGen->generate());
         }
 
@@ -72,25 +85,21 @@ class DeleteMethodGenerator extends ActiveRecordSectionGenerator
 
         $method->addStmt($sqlExpression);
 
+        // Get records
+
+        $expression = new Assign(
+            new Variable('records'),
+            new MethodCall(new Variable('connection'), 'query', [
+                new Variable('sql')
+            ])
+        );
+
+        $method->addStmt($expression);
+
         // Return
+
         $returnStmt = new Return_(
-            new Greater(
-                new MethodCall(new Variable('connection'), 'execute', [
-                    new Variable('sql'),
-                    new Array_(
-                        array_map(
-                            function (Column $column) {
-                                return new ArrayItem(new PropertyFetch(new Variable('this'), $column->getPropertyName()));
-                            },
-                            $this->table->getPrimaryKeys()
-                        ),
-                        [
-                            'kind' => Array_::KIND_SHORT
-                        ]
-                    )
-                ]),
-                new LNumber(0)
-            )
+            new ArrayDimFetch(new ArrayDimFetch(new Variable('records'), new LNumber(0)), new String_('count'))
         );
 
         $method->addStmt($returnStmt);
@@ -104,16 +113,15 @@ class DeleteMethodGenerator extends ActiveRecordSectionGenerator
     private function generateSql(): string
     {
         return sprintf(
-            "DELETE
-                FROM `%s`
-                WHERE %s",
-            $this->table->getName(),
+            'SELECT COUNT(DISTINCT %s) AS `count`
+                FROM `%s`',
             implode(
-                ' AND ',
+                ', ',
                 array_map(function (Column $column) {
-                    return sprintf('`%s` = ?', $column->getName());
+                    return sprintf('`%s`', $column->getName());
                 }, $this->table->getPrimaryKeys())
-            )
+            ),
+            $this->table->getName()
         );
     }
 }

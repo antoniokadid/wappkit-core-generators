@@ -8,6 +8,7 @@ use AntonioKadid\WAPPKitCore\Generators\MySQL\Table;
 use AntonioKadid\WAPPKitCore\Text\TextCase;
 use LogicException;
 use PhpParser\Builder\Class_;
+use PhpParser\Builder\Method;
 use PhpParser\Builder\Namespace_;
 use PhpParser\BuilderFactory;
 use PhpParser\Node\Expr\Array_;
@@ -26,12 +27,7 @@ use PhpParser\Node\Param;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\Node\Stmt\Return_;
 
-/**
- * Class GetByPrimaryKeyMethodGenerator.
- *
- * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
- */
-class GetByPrimaryKeyMethodGenerator extends ORMGenerator
+class GetByUniqueKeyMethodGenerator extends ActiveRecordSectionGenerator
 {
     /**
      * @param Namespace_ $namespace
@@ -51,12 +47,58 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
      */
     public function generate(BuilderFactory $factory): void
     {
-        if (count($this->table->getPrimaryKeys()) === 0) {
+        $uniqueKeys = $this->table->getUniqueKeys();
+        if (count($uniqueKeys) === 0) {
             return;
         }
 
+        foreach ($uniqueKeys as $columns) {
+            $this->class->addStmt($this->generateMethod($factory, $columns));
+        }
+    }
+
+    /**
+     * @param Column[] $columns
+     *
+     * @return string[]
+     */
+    private static function getColumnNames(array $columns): array
+    {
+        return array_map(function (Column $tableColumn) {
+            return new TextCase($tableColumn->getName());
+        }, $columns);
+    }
+
+    /**
+     * @param Column[] $columns
+     *
+     * @throws DatabaseException
+     *
+     * @return string
+     */
+    private static function makeMethodName(array $columns): string
+    {
+        $textCase = new TextCase('get by ' . implode(' and ', self::getColumnNames($columns)));
+
+        return Filter::apply('method-name', $textCase->toCamelCase());
+    }
+
+    /**
+     * @param Column[] $columns
+     *
+     * @return Param[]
+     */
+    private static function makeMethodParameters(array $columns): array
+    {
+        return array_map(function (Column $column) {
+            return new Param(new Variable($column->getPropertyName()), null, $column->getPhpType());
+        }, $columns);
+    }
+
+    private function generateMethod(BuilderFactory $factory, array $columns): Method
+    {
         $method = $factory
-            ->method($this->makeMethodName())
+            ->method(self::makeMethodName($columns))
             ->makePublic()
             ->makeStatic()
             ->addParams(
@@ -64,18 +106,19 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
                     [
                         $factory->param('connection')->setType('DatabaseConnectionInterface')
                     ],
-                    $this->makeMethodParameters()
+                    self::makeMethodParameters($columns)
                 )
             )
-            ->setReturnType(new NullableType($this->table->getClassName()));
+            ->setReturnType(new NullableType($this->table->className));
 
         if ($this->commentsEnabled()) {
             $commentGen = new CommentGenerator();
             $commentGen->addParameter('DatabaseConnectionInterface', 'connection');
-            foreach ($this->table->getPrimaryKeys() as $column) {
+            foreach ($columns as $column) {
                 $commentGen->addParameter($column->getPhpType(), $column->getPropertyName());
             }
-            $commentGen->setReturnType('null|' . $this->table->getClassName());
+
+            $commentGen->setReturnType('null|' . $this->table->className);
 
             $method->setDocComment($commentGen->generate());
         }
@@ -83,23 +126,24 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
         // Set SQL
         $sqlExpression = new Assign(
             new Variable('sql'),
-            new String_($this->generateSql())
+            new String_($this->generateSql($columns))
         );
 
         $method->addStmt($sqlExpression);
 
-        // Get records
+        // Return
 
+        // Get records
         $expression = new Assign(
             new Variable('records'),
             new MethodCall(new Variable('connection'), 'query', [
                 new Variable('sql'),
                 new Array_(
                     array_map(
-                        function (Column $column) {
+                        function (Column $column): ArrayItem {
                             return new ArrayItem(new Variable($column->getPropertyName()));
                         },
-                        $this->table->getPrimaryKeys()
+                        $columns
                     ),
                     [
                         'kind' => Array_::KIND_SHORT
@@ -126,13 +170,15 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
 
         $method->addStmt($returnStmt);
 
-        $this->class->addStmt($method);
+        return $method;
     }
 
     /**
+     * @param Column[] $columns
+     *
      * @return string
      */
-    private function generateSql(): string
+    private function generateSql(array $columns): string
     {
         return sprintf(
             'SELECT %s 
@@ -149,38 +195,8 @@ class GetByPrimaryKeyMethodGenerator extends ORMGenerator
                 ' AND ',
                 array_map(function (Column $column) {
                     return sprintf('`%s` = ?', $column->getName());
-                }, $this->table->getPrimaryKeys())
+                }, $columns)
             )
         );
-    }
-
-    /**
-     * @return string[]
-     */
-    private function getPrimaryKeyPropertyNames(): array
-    {
-        return array_map(function (Column $tableColumn) {
-            return new TextCase($tableColumn->getName());
-        }, $this->table->getPrimaryKeys());
-    }
-
-    /**
-     * @return string
-     */
-    private function makeMethodName(): string
-    {
-        $textCase = new TextCase('get by ' . implode(' and ', $this->getPrimaryKeyPropertyNames()));
-
-        return Filter::apply('method-name', $textCase->toCamelCase());
-    }
-
-    /**
-     * @return Param[]
-     */
-    private function makeMethodParameters(): array
-    {
-        return array_map(function (Column $column) {
-            return new Param(new Variable($column->getPropertyName()), null, $column->getPhpType());
-        }, $this->table->getPrimaryKeys());
     }
 }

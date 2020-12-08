@@ -8,10 +8,12 @@ use AntonioKadid\WAPPKitCore\Extensibility\Filter;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\AddMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\AllMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\ConstructorGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\CountMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\DeleteMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\FromRecordMethodGenerator;
-use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByForeignKeyMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByNonUniqueKeyMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByPrimaryKeyMethodGenerator;
+use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\GetByUniqueKeyMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\JsonSerializeMethodGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\PropertiesGenerator;
 use AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators\UpdateMethodGenerator;
@@ -63,7 +65,8 @@ class Generator
         $this->options['comments'] = Offset::get($config, 'comments')->getBool(true);
 
         $defaultTableConfiguration = [
-            'namespace' => Offset::get($config, 'namespace')->getTrimString(Filter::apply('namespace-name', $this->schema)),
+            'namespace' => Offset::get($config, 'namespace')
+                ->getTrimString(Filter::apply('namespace-name', $this->schema)),
             'outDir'    => Path::combine(getcwd(), Offset::get($config, 'outDir')->getTrimString('out')),
             'add'       => true,
             'update'    => true,
@@ -85,6 +88,10 @@ class Generator
             $allowUpdate  = $tableConfig['update'] === true;
             $allowDelete  = $tableConfig['delete'] === true;
 
+            $table->className = isset($tableConfig['className']) ?
+                $tableConfig['className'] :
+                Filter::apply('class-name', $table->getName());
+
             if (!file_exists($outDir) && !mkdir($outDir, 0777, true)) {
                 echo sprintf("Cannot process table %s. Failed to write to output path.\n", $table->getName());
                 continue;
@@ -95,7 +102,7 @@ class Generator
             $namespace = $factory->namespace($namespace);
             $namespace->addStmt($factory->use(DatabaseConnectionInterface::class));
 
-            $class = $factory->class($table->getClassName());
+            $class = $factory->class($table->className);
 
             $properties = new PropertiesGenerator($namespace, $class, $table, $this->options);
             $properties->generate($factory);
@@ -103,10 +110,13 @@ class Generator
             $method = new AllMethodGenerator($namespace, $class, $table, $this->options);
             $method->generate($factory);
 
-            $method = new GetByPrimaryKeyMethodGenerator($namespace, $class, $table, $this->options);
+            $method = new CountMethodGenerator($namespace, $class, $table, $this->options);
             $method->generate($factory);
 
-            $method = new GetByForeignKeyMethodGenerator($namespace, $class, $table, $this->options);
+            $method = new GetByUniqueKeyMethodGenerator($namespace, $class, $table, $this->options);
+            $method->generate($factory);
+
+            $method = new GetByNonUniqueKeyMethodGenerator($namespace, $class, $table, $this->options);
             $method->generate($factory);
 
             if ($allowAdd) {
@@ -135,7 +145,7 @@ class Generator
             $prettyPrinter = new PrettyPrinter\Standard();
             $code          = $prettyPrinter->prettyPrintFile([$namespace->getNode()]);
 
-            file_put_contents(Path::combine($outDir, $table->getClassName() . '.php'), $code);
+            file_put_contents(Path::combine($outDir, $table->className . '.php'), $code);
         }
 
         $this->clearFilters();

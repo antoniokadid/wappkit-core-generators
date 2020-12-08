@@ -18,11 +18,11 @@ use PhpParser\Node\Name;
 use PhpParser\Node\Scalar\String_;
 
 /**
- * Class ORMGenerator.
+ * Class ActiveRecordSectionGenerator.
  *
  * @package AntonioKadid\WAPPKitCore\Generators\MySQL\ActiveRecord\Generators
  */
-abstract class ORMGenerator
+abstract class ActiveRecordSectionGenerator
 {
     /** @var Class_ */
     protected $class;

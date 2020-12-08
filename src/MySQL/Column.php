@@ -19,10 +19,6 @@ class Column
     private $name;
     /** @var bool */
     private $nullable = false;
-    /** @var bool */
-    private $primary = false;
-    /** @var Table */
-    private $table;
 
     /**
      * Column constructor.
@@ -40,7 +36,6 @@ class Column
         $this->columnType   = $columnDefinition['COLUMN_TYPE']; // Includes additional type info (ex. length)
         $this->nullable     = $columnDefinition['IS_NULLABLE'] === 'YES';
         $this->comment      = $columnDefinition['COLUMN_COMMENT'];
-        $this->primary      = strpos($columnDefinition['COLUMN_KEY'], 'PRI') !== false;
     }
 
     /**
@@ -68,29 +63,6 @@ class Column
                     $table->getName()
                 ])
             );
-    }
-
-    /**
-     * @param DatabaseConnectionInterface $connection
-     * @param string                      $schema
-     * @param string                      $table
-     * @param string                      $column
-     *
-     * @throws DatabaseException
-     *
-     * @return null|Column
-     */
-    public static function get(DatabaseConnectionInterface $connection, string $schema, string $table, string $column)
-    {
-        $sql = 'SELECT *
-                FROM `information_schema`.`columns`
-                WHERE `table_schema` = ? AND 
-                      `table_name` = ? AND
-                      `column_name` = ?';
-
-        $records = $connection->query($sql, [$schema, $table, $column]);
-
-        return empty($records) ? null : new Column(Table::get($connection, $schema, $table), array_shift($records));
     }
 
     /**
@@ -141,7 +113,7 @@ class Column
                 return 'int';
             case 'DATE':
             case 'DATETIME':
-                return DateTime::class;
+                return '\DateTime';
             case 'CHAR':
             case 'VARCHAR':
             case 'TINYTEXT':
@@ -164,13 +136,5 @@ class Column
     public function isNullable(): bool
     {
         return $this->nullable;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isPrimary(): bool
-    {
-        return $this->primary;
     }
 }
